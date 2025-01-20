@@ -54,6 +54,7 @@
   (:import [com.mongodb Mongo DB DBCollection WriteResult DBObject WriteConcern
             DBCursor MapReduceCommand MapReduceCommand$OutputType AggregationOutput
             AggregationOptions AggregationOptions$OutputMode]
+           [com.mongodb.client.model Collation CollationStrength]
            [java.util List Map]
            [java.util.concurrent TimeUnit]
            [clojure.lang IPersistentMap ISeq]
@@ -524,14 +525,23 @@
 ;; Aggregation
 ;;
 
+(defn- build-collation-options
+  ^Collation
+  [{:keys [locale strength]}]
+  (cond-> (Collation/builder)
+     locale   (.locale locale)
+     strength (.collationStrength (CollationStrength/fromInt (int strength)))
+     true     .build))
+
 (defn- build-aggregation-options
   ^AggregationOptions
-  [{:keys [^Boolean allow-disk-use cursor ^Long max-time]}]
+  [{:keys [^Boolean allow-disk-use collation cursor ^Long max-time]}]
   (cond-> (AggregationOptions/builder)
      allow-disk-use       (.allowDiskUse allow-disk-use)
      cursor               (.outputMode AggregationOptions$OutputMode/CURSOR)
      max-time             (.maxTime max-time TimeUnit/MILLISECONDS)
      (:batch-size cursor) (.batchSize (int (:batch-size cursor)))
+     collation            (.collation (build-collation-options collation))
      true                 .build))
 
 (defn aggregate
